@@ -1,0 +1,267 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-muted: #7d8590;
+  --starting: #6e7681;
+  --thinking: #58a6ff;
+  --tool-calling: #d29922;
+  --waiting: #f85149;
+  --idle: #e3b341;
+  --done: #3fb950;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+h1 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  background: var(--border);
+  border-radius: 10px;
+  color: var(--text-muted);
+}
+
+.status-indicator {
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.status-indicator.connected {
+  background: rgba(63, 185, 80, 0.15);
+  color: var(--done);
+}
+
+.status-indicator.disconnected {
+  background: rgba(248, 81, 73, 0.15);
+  color: var(--waiting);
+}
+
+main {
+  padding: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+#empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+#empty-state.hidden {
+  display: none;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-hint {
+  font-size: 13px;
+  margin-top: 8px;
+  opacity: 0.7;
+}
+
+.agent-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--starting);
+  border-radius: 8px;
+  padding: 16px;
+  transition: border-color 0.3s, opacity 0.3s;
+}
+
+.agent-card.state-thinking {
+  border-left-color: var(--thinking);
+}
+
+.agent-card.state-tool_calling {
+  border-left-color: var(--tool-calling);
+}
+
+.agent-card.state-waiting {
+  border-left-color: var(--waiting);
+  border-color: var(--waiting);
+  background: rgba(248, 81, 73, 0.08);
+  box-shadow: 0 0 12px rgba(248, 81, 73, 0.25), inset 0 0 0 1px rgba(248, 81, 73, 0.2);
+  animation: card-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes card-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(248, 81, 73, 0.25), inset 0 0 0 1px rgba(248, 81, 73, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(248, 81, 73, 0.4), inset 0 0 0 1px rgba(248, 81, 73, 0.35); }
+}
+
+.agent-card.state-idle {
+  border-left-color: var(--idle);
+}
+
+.agent-card.state-done {
+  border-left-color: var(--done);
+  opacity: 0.5;
+}
+
+.agent-card.state-starting {
+  border-left-color: var(--starting);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.state-pill {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.state-pill.starting {
+  background: rgba(110, 118, 129, 0.2);
+  color: var(--starting);
+}
+
+.state-pill.thinking {
+  background: rgba(88, 166, 255, 0.15);
+  color: var(--thinking);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.state-pill.tool_calling {
+  background: rgba(210, 153, 34, 0.15);
+  color: var(--tool-calling);
+}
+
+.state-pill.waiting {
+  background: rgba(248, 81, 73, 0.15);
+  color: var(--waiting);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.state-pill.idle {
+  background: rgba(227, 179, 65, 0.15);
+  color: var(--idle);
+}
+
+.state-pill.done {
+  background: rgba(63, 185, 80, 0.15);
+  color: var(--done);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.session-id {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.card-row .label {
+  color: var(--text-muted);
+}
+
+.card-row .value {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 12px;
+  text-align: right;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-row .value.project {
+  cursor: help;
+}
+
+.time-value {
+  color: var(--text-muted);
+}
+
+.waiting-banner {
+  background: var(--waiting);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  padding: 6px 8px;
+  margin: -16px -16px 12px -16px;
+  border-radius: 6px 6px 0 0;
+}
+
+.prompt-preview {
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

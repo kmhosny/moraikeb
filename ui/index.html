@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Monitor</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <h1>Agent Monitor</h1>
+      <span id="agent-count" class="badge">0 agents</span>
+    </div>
+    <div class="header-right">
+      <span id="connection-status" class="status-indicator disconnected">Connecting...</span>
+    </div>
+  </header>
+  <main id="agent-grid"></main>
+  <div id="empty-state">
+    <div class="empty-icon">&#x1f50d;</div>
+    <p>No agents detected yet.</p>
+    <p class="empty-hint">Start a Claude Code session and it will appear here.</p>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
