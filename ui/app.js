@@ -151,3 +151,308 @@
 
   connect();
 })();
+
+// --- PR Review Modal ---
+(function () {
+  'use strict';
+
+  var prState = {};
+
+  function escapeHtml(s) {
+    var div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  function openPRModal() {
+    var modal = document.getElementById('pr-modal');
+    modal.classList.remove('hidden');
+    show('pr-step-url');
+    hide('pr-step-repo');
+    hide('pr-step-status');
+    document.getElementById('pr-url-input').value = '';
+    document.getElementById('pr-url-error').classList.add('hidden');
+    document.getElementById('pr-url-input').focus();
+    prState = {};
+  }
+
+  function closePRModal() {
+    document.getElementById('pr-modal').classList.add('hidden');
+  }
+
+  function show(id) { document.getElementById(id).classList.remove('hidden'); }
+  function hide(id) { document.getElementById(id).classList.add('hidden'); }
+
+  function lookupPR() {
+    var url = document.getElementById('pr-url-input').value.trim();
+    if (!url) return;
+
+    var btn = document.getElementById('pr-lookup-btn');
+    btn.disabled = true;
+    btn.textContent = 'Looking up...';
+    hide('pr-url-error');
+
+    fetch('/api/pr-review/lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: url })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        btn.disabled = false;
+        btn.textContent = 'Look Up';
+
+        if (data.error) {
+          document.getElementById('pr-url-error').textContent = data.error;
+          show('pr-url-error');
+          return;
+        }
+
+        prState.url = url;
+        prState.pr = data.pr;
+        prState.storedRepo = data.stored_repo;
+        showRepoStep();
+      })
+      .catch(function (err) {
+        btn.disabled = false;
+        btn.textContent = 'Look Up';
+        document.getElementById('pr-url-error').textContent = 'Request failed: ' + err.message;
+        show('pr-url-error');
+      });
+  }
+
+  function showRepoStep() {
+    hide('pr-step-url');
+    show('pr-step-repo');
+    hide('pr-repo-error');
+
+    var pr = prState.pr;
+    document.getElementById('pr-title').textContent = '#' + pr.number + ' ' + pr.title;
+    document.getElementById('pr-meta').textContent =
+      pr.owner + '/' + pr.repo + '  ·  ' + pr.branch + '  ·  ' + pr.commits.length + ' commit(s)';
+
+    var desc = pr.body || '(no description)';
+    document.getElementById('pr-desc').textContent =
+      desc.length > 300 ? desc.substring(0, 300) + '...' : desc;
+
+    if (prState.storedRepo) {
+      show('pr-stored-repo');
+      document.getElementById('pr-stored-path').textContent = prState.storedRepo.local_path;
+      hide('pr-select-repo');
+    } else {
+      hide('pr-stored-repo');
+      show('pr-select-repo');
+      hide('dir-browser');
+    }
+  }
+
+  function useStoredRepo() {
+    prState.repoPath = prState.storedRepo.local_path;
+    doStartReview();
+  }
+
+  function showBrowser() {
+    hide('pr-stored-repo');
+    show('pr-select-repo');
+    hide('dir-browser');
+  }
+
+  function browsePath() {
+    var path = document.getElementById('pr-path-input').value.trim();
+    show('dir-browser');
+
+    fetch('/api/browse?path=' + encodeURIComponent(path))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) {
+          document.getElementById('dir-path').textContent = 'Error: ' + data.error;
+          document.getElementById('dir-entries').innerHTML = '';
+          return;
+        }
+        document.getElementById('pr-path-input').value = data.path;
+        renderBrowser(data);
+      });
+  }
+
+  function navigateDir(path) {
+    document.getElementById('pr-path-input').value = path;
+    fetch('/api/browse?path=' + encodeURIComponent(path))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) return;
+        renderBrowser(data);
+      });
+  }
+
+  function renderBrowser(data) {
+    document.getElementById('dir-path').textContent = data.path;
+    var container = document.getElementById('dir-entries');
+    container.innerHTML = '';
+
+    // Parent directory
+    var parentEl = document.createElement('div');
+    parentEl.className = 'dir-entry';
+    parentEl.textContent = '..';
+    parentEl.onclick = function () { navigateDir(data.parent); };
+    container.appendChild(parentEl);
+
+    (data.entries || []).forEach(function (e) {
+      var el = document.createElement('div');
+      el.className = e.is_git ? 'dir-entry dir-git' : 'dir-entry';
+      var nameSpan = document.createElement('span');
+      nameSpan.textContent = e.name;
+      el.appendChild(nameSpan);
+      if (e.is_git) {
+        var badge = document.createElement('span');
+        badge.className = 'git-badge';
+        badge.textContent = 'git';
+        el.appendChild(badge);
+      }
+      el.onclick = function () { navigateDir(e.path); };
+      container.appendChild(el);
+    });
+  }
+
+  function startPRReview() {
+    var path = document.getElementById('pr-path-input').value.trim();
+    if (!path) {
+      document.getElementById('pr-repo-error').textContent = 'Please enter a repository path';
+      show('pr-repo-error');
+      return;
+    }
+    prState.repoPath = path;
+    doStartReview();
+  }
+
+  function doStartReview() {
+    hide('pr-step-repo');
+    show('pr-step-status');
+    var statusEl = document.getElementById('pr-status-msg');
+    statusEl.textContent = 'Fetching PR, creating worktree, launching Claude Code...';
+    statusEl.className = 'status-msg loading';
+
+    fetch('/api/pr-review/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: prState.url, repo_path: prState.repoPath })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) {
+          statusEl.textContent = 'Error: ' + data.error;
+          statusEl.className = 'status-msg error';
+          return;
+        }
+        statusEl.innerHTML =
+          '<div class="success-icon">&#x2713;</div>' +
+          '<div>Claude Code launched!</div>' +
+          '<div class="status-detail">Worktree: ' + escapeHtml(data.worktree) + '</div>' +
+          '<div class="status-detail">Branch: ' + escapeHtml(data.pr_branch) + '</div>';
+        statusEl.className = 'status-msg success';
+      })
+      .catch(function (err) {
+        statusEl.textContent = 'Request failed: ' + err.message;
+        statusEl.className = 'status-msg error';
+      });
+  }
+
+  // Handle Enter key in URL input
+  document.getElementById('pr-url-input').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') lookupPR();
+  });
+
+  // Handle Enter key in path input
+  document.getElementById('pr-path-input').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') browsePath();
+  });
+
+  // --- Settings ---
+
+  var settingsVisible = false;
+  var previousStep = null;
+
+  function toggleSettings() {
+    settingsVisible = !settingsVisible;
+    if (settingsVisible) {
+      // Remember which step is visible so we can restore it
+      previousStep = document.querySelector('.pr-step:not(.hidden)');
+      if (previousStep) previousStep.classList.add('hidden');
+      show('pr-settings');
+      loadSettings();
+    } else {
+      hide('pr-settings');
+      if (previousStep) previousStep.classList.remove('hidden');
+    }
+  }
+
+  function loadSettings() {
+    fetch('/api/config')
+      .then(function (r) { return r.json(); })
+      .then(function (cfg) {
+        document.getElementById('cfg-method').value = cfg.github_method || '';
+        // Only set token placeholder if one is stored (value comes masked)
+        var tokenInput = document.getElementById('cfg-token');
+        if (cfg.github_token) {
+          tokenInput.placeholder = cfg.github_token;
+        } else {
+          tokenInput.placeholder = 'ghp_...';
+        }
+        tokenInput.value = '';
+        document.getElementById('cfg-claude-path').value = cfg.claude_path || '';
+        updateTokenVisibility();
+      });
+  }
+
+  function updateTokenVisibility() {
+    var method = document.getElementById('cfg-method').value;
+    if (method === 'token') {
+      show('cfg-token-row');
+    } else {
+      hide('cfg-token-row');
+    }
+  }
+
+  function saveSettings() {
+    var method = document.getElementById('cfg-method').value;
+    var token = document.getElementById('cfg-token').value.trim();
+    var claudePath = document.getElementById('cfg-claude-path').value.trim();
+    var payload = { github_method: method, claude_path: claudePath };
+    // Only send token if user typed a new one
+    if (token) {
+      payload.github_token = token;
+    }
+
+    fetch('/api/config/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var statusEl = document.getElementById('cfg-status');
+        if (data.error) {
+          statusEl.textContent = 'Error: ' + data.error;
+          statusEl.className = 'settings-status error';
+        } else {
+          statusEl.textContent = 'Settings saved!';
+          statusEl.className = 'settings-status success';
+          setTimeout(function () { toggleSettings(); }, 800);
+        }
+        show('cfg-status');
+      });
+  }
+
+  // Toggle token field visibility when method changes
+  document.getElementById('cfg-method').addEventListener('change', updateTokenVisibility);
+
+  // Expose functions for onclick handlers
+  window.openPRModal = openPRModal;
+  window.closePRModal = closePRModal;
+  window.lookupPR = lookupPR;
+  window.useStoredRepo = useStoredRepo;
+  window.showBrowser = showBrowser;
+  window.browsePath = browsePath;
+  window.startPRReview = startPRReview;
+  window.toggleSettings = toggleSettings;
+  window.saveSettings = saveSettings;
+})();

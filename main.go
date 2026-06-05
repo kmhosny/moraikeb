@@ -55,8 +55,16 @@ func main() {
 	// Set up state manager
 	sm := NewStateManager(eventLog)
 
+	// Set up PR review database
+	dbPath := filepath.Join(homeDir, ".agent-monitoring", "prreview.db")
+	prDB, err := NewPRReviewDB(dbPath)
+	if err != nil {
+		log.Fatalf("pr review db: %v", err)
+	}
+	defer prDB.Close()
+
 	// Set up server
-	srv := NewServer(sm, eventLog)
+	srv := NewServer(sm, eventLog, prDB)
 	mux := http.NewServeMux()
 	srv.SetupRoutes(mux)
 

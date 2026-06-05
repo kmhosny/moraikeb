@@ -13,6 +13,7 @@
       <span id="agent-count" class="badge">0 agents</span>
     </div>
     <div class="header-right">
+      <button id="pr-review-btn" class="header-btn" onclick="openPRModal()">PR Review</button>
       <span id="connection-status" class="status-indicator disconnected">Connecting...</span>
     </div>
   </header>
@@ -22,6 +23,94 @@
     <p>No agents detected yet.</p>
     <p class="empty-hint">Start a Claude Code session and it will appear here.</p>
   </div>
+  <!-- PR Review Modal -->
+  <div id="pr-modal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closePRModal()"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>PR Review</h2>
+        <div class="modal-header-actions">
+          <button class="settings-toggle" onclick="toggleSettings()" title="Settings">&#x2699;</button>
+          <button class="modal-close" onclick="closePRModal()">&times;</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <!-- Settings Panel -->
+        <div id="pr-settings" class="pr-step hidden">
+          <div class="settings-panel">
+            <h3>GitHub Settings</h3>
+            <label for="cfg-method">Method for fetching PR info</label>
+            <select id="cfg-method">
+              <option value="">Auto-detect</option>
+              <option value="gh">gh CLI</option>
+              <option value="token">GitHub API Token</option>
+            </select>
+            <div id="cfg-token-row" class="hidden">
+              <label for="cfg-token">Personal Access Token</label>
+              <input type="password" id="cfg-token" placeholder="ghp_...">
+              <p class="settings-hint">Needs <code>repo</code> scope for private repos, or just public access for public repos.</p>
+            </div>
+            <label for="cfg-claude-path">Claude binary path <span class="settings-hint">(leave empty to auto-detect)</span></label>
+            <input type="text" id="cfg-claude-path" class="settings-input" placeholder="/home/user/.local/bin/claude">
+            <div class="btn-row">
+              <button class="btn-primary-sm" onclick="saveSettings()">Save</button>
+              <button class="btn-secondary" onclick="toggleSettings()">Cancel</button>
+            </div>
+            <div id="cfg-status" class="settings-status hidden"></div>
+          </div>
+        </div>
+
+        <!-- Step 1: Enter URL -->
+        <div id="pr-step-url" class="pr-step">
+          <label for="pr-url-input">GitHub PR URL</label>
+          <div class="input-row">
+            <input type="text" id="pr-url-input" placeholder="https://github.com/owner/repo/pull/123">
+            <button id="pr-lookup-btn" onclick="lookupPR()">Look Up</button>
+          </div>
+          <div id="pr-url-error" class="error-msg hidden"></div>
+        </div>
+
+        <!-- Step 2: PR Info + Repo Selection -->
+        <div id="pr-step-repo" class="pr-step hidden">
+          <div id="pr-info-card">
+            <div class="pr-title" id="pr-title"></div>
+            <div class="pr-meta" id="pr-meta"></div>
+            <div class="pr-desc" id="pr-desc"></div>
+          </div>
+
+          <div id="pr-stored-repo" class="hidden">
+            <p class="field-label">Repo found locally:</p>
+            <div class="repo-path" id="pr-stored-path"></div>
+            <div class="btn-row">
+              <button class="btn-primary-sm" onclick="useStoredRepo()">Use This</button>
+              <button class="btn-secondary" onclick="showBrowser()">Change</button>
+            </div>
+          </div>
+
+          <div id="pr-select-repo" class="hidden">
+            <label>Select local repository directory</label>
+            <div class="input-row">
+              <input type="text" id="pr-path-input" placeholder="/home/user/projects/repo">
+              <button onclick="browsePath()">Browse</button>
+            </div>
+            <div id="dir-browser" class="hidden">
+              <div id="dir-path" class="dir-current-path"></div>
+              <div id="dir-entries" class="dir-list"></div>
+            </div>
+            <button id="pr-start-btn" class="btn-primary" onclick="startPRReview()">Start Review</button>
+          </div>
+
+          <div id="pr-repo-error" class="error-msg hidden"></div>
+        </div>
+
+        <!-- Step 3: Status -->
+        <div id="pr-step-status" class="pr-step hidden">
+          <div id="pr-status-msg" class="status-msg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="/app.js"></script>
 </body>
 </html>

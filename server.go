@@ -21,10 +21,11 @@ var upgrader = websocket.Upgrader{
 type Server struct {
 	sm       *StateManager
 	eventLog *EventLogger
+	prDB     *PRReviewDB
 }
 
-func NewServer(sm *StateManager, eventLog *EventLogger) *Server {
-	return &Server{sm: sm, eventLog: eventLog}
+func NewServer(sm *StateManager, eventLog *EventLogger, prDB *PRReviewDB) *Server {
+	return &Server{sm: sm, eventLog: eventLog, prDB: prDB}
 }
 
 func (s *Server) SetupRoutes(mux *http.ServeMux) {
@@ -32,6 +33,12 @@ func (s *Server) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/ws", s.handleWebSocket)
 	mux.HandleFunc("/api/sessions", s.handleListSessions)
 	mux.HandleFunc("/api/sessions/", s.handleSessionEvents)
+	mux.HandleFunc("/api/pr-review/lookup", s.handlePRLookup)
+	mux.HandleFunc("/api/pr-review/start", s.handlePRStart)
+	mux.HandleFunc("/api/pr-review/repos", s.handleListRepos)
+	mux.HandleFunc("/api/config", s.handleGetConfig)
+	mux.HandleFunc("/api/config/save", s.handleSetConfig)
+	mux.HandleFunc("/api/browse", s.handleBrowse)
 
 	// Static files from embedded UI
 	uiContent, _ := fs.Sub(uiFS, "ui")
